@@ -1,103 +1,100 @@
 # Adam's House Reservation Manager
 
-A complete mobile-first vacation rental management application for tracking bookings, guest contact details, totals, deposits, remaining balances, reservation status, occupancy, and monthly revenue.
+A 100% free-hostable vacation rental reservation manager for tracking bookings, guest details, check-in/check-out dates, automatic nights, totals, deposits, remaining balances, reservation status, calendar occupancy, and dashboard metrics.
+
+The app is now a pure static frontend and can be deployed with **GitHub Pages** only. Data is stored in the **Supabase free tier** through the Supabase JavaScript client loaded from a CDN.
 
 ## Features
 
-- Responsive iPhone and Android friendly web UI
-- Node.js + Express backend
-- MySQL database with a ready-to-run schema
+- Pure HTML/CSS/JavaScript frontend
+- GitHub Pages hosting, with no Node.js, Express, Docker, Railway, MySQL, or paid server
+- Supabase free tier database
+- Supabase client library from CDN
 - Reservation calendar by month
 - Add, edit, and delete reservations
-- Guest information: full name, phone, email, adults, children
+- Guest information: full name, phone, email, adults, children, and notes
+- Check-in and check-out dates
 - Automatic number of nights calculation
-- Automatic remaining amount calculation from total and deposit
+- Total amount, deposit paid, and automatic remaining amount
 - Reservation status: Pending, Confirmed, Paid, Cancelled
-- Dashboard with upcoming reservations, monthly revenue, occupancy rate, and amount remaining to collect
-- Docker and Railway deployment support
+- Dashboard with upcoming reservations, monthly revenue, occupancy rate, and remaining amount to collect
+- Mobile-first responsive UI
 
 ## Project structure
 
 ```text
 .
-├── db/schema.sql              # MySQL database schema
-├── src/db/init.js             # Schema initialization script
-├── src/db/pool.js             # MySQL connection pool
-├── src/routes/reservations.js # Reservation API and dashboard metrics
-├── src/public/index.html      # Mobile-first UI
-├── src/public/styles.css      # Modern responsive styling
-├── src/public/app.js          # Frontend calendar, forms, and API calls
-├── src/server.js              # Express application entry point
-├── Dockerfile
-├── docker-compose.yml
-├── railway.json
-├── package.json
-└── .env.example
+├── index.html          # Static GitHub Pages entry point
+├── styles.css          # Responsive app styling
+├── app.js              # Supabase-powered calendar, form, CRUD, and dashboard logic
+├── supabase/schema.sql # Supabase/PostgreSQL table, indexes, triggers, and RLS policies
+├── .nojekyll           # Keeps GitHub Pages from processing the site with Jekyll
+└── README.md
 ```
 
-## Local setup
+## 1. Create the free Supabase database
 
-1. Install dependencies:
+1. Go to <https://supabase.com> and create a free project.
+2. Open **SQL Editor** in the Supabase dashboard.
+3. Copy the contents of [`supabase/schema.sql`](supabase/schema.sql), paste it into the SQL Editor, and run it.
+4. Open **Project Settings > API**.
+5. Copy these two values:
+   - **Project URL**
+   - **anon public key**
 
-   ```bash
-   npm install
-   ```
+## 2. Connect the frontend to Supabase
 
-2. Copy the environment file and update the values if needed:
+Open [`app.js`](app.js) and replace the placeholders at the top:
 
-   ```bash
-   cp .env.example .env
-   ```
+```js
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+```
 
-3. Start MySQL and create the schema:
+with your Supabase values:
 
-   ```bash
-   npm run db:init
-   ```
+```js
+const SUPABASE_URL = 'https://your-project-ref.supabase.co';
+const SUPABASE_ANON_KEY = 'your-anon-public-key';
+```
 
-4. Start the app:
+`APP_CURRENCY` is set to `EUR` by default; change it if you manage reservations in another currency.
 
-   ```bash
-   npm run dev
-   ```
+The anon key is expected to be public in a browser app. The included schema enables Row Level Security and adds public CRUD policies so the app works from GitHub Pages without a backend server. If the GitHub Pages URL should not be publicly editable, add Supabase Auth later and replace the public policies with owner-only policies.
 
-5. Open <http://localhost:3000>.
+## 3. Test locally without Node.js
 
-## Docker setup
-
-Run the full application stack with MySQL:
+Because browser security can block CDN/database requests from `file://`, run any simple static file server from the repository root. For example, if Python is available:
 
 ```bash
-docker compose up --build
+python3 -m http.server 8080
 ```
 
-Then open <http://localhost:3000>.
+Then open <http://localhost:8080>.
 
-## API endpoints
+This local test server is only for development. GitHub Pages hosts the same static files for free.
 
-- `GET /api/health` - Health check
-- `GET /api/reservations` - List reservations
-- `GET /api/reservations/dashboard` - Dashboard metrics
-- `POST /api/reservations` - Create a reservation
-- `PUT /api/reservations/:id` - Update a reservation
-- `DELETE /api/reservations/:id` - Delete a reservation
+## 4. Deploy for free on GitHub Pages
 
-## Railway deployment
+1. Commit and push this repository to GitHub.
+2. In GitHub, open **Settings > Pages**.
+3. Under **Build and deployment**, choose:
+   - **Source**: Deploy from a branch
+   - **Branch**: `main` (or your deployment branch)
+   - **Folder**: `/ (root)`
+4. Click **Save**.
+5. GitHub Pages will publish the app at a URL similar to:
 
-1. Create a Railway project.
-2. Add a MySQL database service.
-3. Add these environment variables to the web service:
-   - `PORT`
-   - `DB_HOST`
-   - `DB_PORT`
-   - `DB_USER`
-   - `DB_PASSWORD`
-   - `DB_NAME`
-4. Deploy the repository. Railway uses `railway.json` and starts the app with `npm start`.
-5. Run `npm run db:init` once from a Railway shell or job to initialize the schema.
+   ```text
+   https://your-username.github.io/reservation-vacance/
+   ```
+
+The app uses relative asset paths (`./styles.css` and `./app.js`), so it works correctly from a GitHub Pages project subpath.
 
 ## Notes
 
-- Occupancy rate is calculated for the current month from non-cancelled occupied nights.
-- Remaining amount is stored as `total_amount - deposit_paid` and never goes below zero.
-- Nights are calculated from check-in and check-out dates on both frontend and backend.
+- Nights are calculated from check-in to check-out dates in the browser and stored as a generated column in Supabase.
+- Remaining amount is calculated as `total_amount - deposit_paid` and never goes below zero.
+- Cancelled reservations are excluded from dashboard revenue, occupancy, and upcoming reservations.
+- Occupancy rate is calculated for the current calendar month from non-cancelled occupied nights.
+- There is no paid server and no MySQL database dependency.
