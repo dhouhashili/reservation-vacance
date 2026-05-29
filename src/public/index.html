@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Adam's House Reservation Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="hero">
+    <nav class="topbar">
+      <div>
+        <p class="eyebrow">Vacation rental control center</p>
+        <h1>Adam's House Reservation Manager</h1>
+      </div>
+      <button id="newReservationButton" class="primary-button">+ New</button>
+    </nav>
+    <section class="dashboard-grid" aria-label="Dashboard summary">
+      <article class="metric-card">
+        <span>Monthly revenue</span>
+        <strong id="monthlyRevenue">$0</strong>
+      </article>
+      <article class="metric-card">
+        <span>Occupancy rate</span>
+        <strong id="occupancyRate">0%</strong>
+      </article>
+      <article class="metric-card">
+        <span>Remaining to collect</span>
+        <strong id="remainingToCollect">$0</strong>
+      </article>
+    </section>
+  </header>
+
+  <main class="app-shell">
+    <section class="panel upcoming-panel">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Next arrivals</p>
+          <h2>Upcoming reservations</h2>
+        </div>
+      </div>
+      <div id="upcomingReservations" class="stacked-list"></div>
+    </section>
+
+    <section class="panel calendar-panel">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Calendar</p>
+          <h2 id="calendarTitle">Reservations</h2>
+        </div>
+        <div class="calendar-controls">
+          <button id="previousMonth" class="ghost-button" aria-label="Previous month">‹</button>
+          <button id="nextMonth" class="ghost-button" aria-label="Next month">›</button>
+        </div>
+      </div>
+      <div class="calendar-weekdays">
+        <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+      </div>
+      <div id="calendar" class="calendar"></div>
+    </section>
+
+    <section class="panel reservations-panel">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">All stays</p>
+          <h2>Reservations</h2>
+        </div>
+      </div>
+      <div id="reservationList" class="reservation-list"></div>
+    </section>
+  </main>
+
+  <dialog id="reservationDialog" class="reservation-dialog">
+    <form id="reservationForm" method="dialog">
+      <div class="dialog-header">
+        <div>
+          <p class="eyebrow">Booking details</p>
+          <h2 id="dialogTitle">Add reservation</h2>
+        </div>
+        <button type="button" id="closeDialog" class="icon-button" aria-label="Close">×</button>
+      </div>
+
+      <input type="hidden" id="reservationId">
+      <div class="form-grid">
+        <label>Full name<input id="guestFullName" required placeholder="Guest full name"></label>
+        <label>Phone<input id="guestPhone" required placeholder="+1 555 000 0000"></label>
+        <label>Email<input id="guestEmail" type="email" required placeholder="guest@example.com"></label>
+        <label>Status<select id="status"><option>Pending</option><option>Confirmed</option><option>Paid</option><option>Cancelled</option></select></label>
+        <label>Adults<input id="adults" type="number" min="1" value="2" required></label>
+        <label>Children<input id="children" type="number" min="0" value="0" required></label>
+        <label>Check-in<input id="checkIn" type="date" required></label>
+        <label>Check-out<input id="checkOut" type="date" required></label>
+        <label>Nights<input id="nights" type="number" readonly></label>
+        <label>Total amount<input id="totalAmount" type="number" min="0" step="0.01" value="0" required></label>
+        <label>Deposit paid<input id="depositPaid" type="number" min="0" step="0.01" value="0" required></label>
+        <label>Remaining amount<input id="remainingAmount" type="number" readonly></label>
+      </div>
+      <label class="full-width">Notes<textarea id="notes" rows="3" placeholder="Arrival details, requests, payment notes..."></textarea></label>
+      <p id="formMessage" class="form-message" role="alert"></p>
+      <div class="dialog-actions">
+        <button type="button" id="deleteReservation" class="danger-button">Delete</button>
+        <button type="submit" class="primary-button">Save reservation</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="/app.js"></script>
+</body>
+</html>
