@@ -1,3 +1,8 @@
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+const RESERVATIONS_TABLE = 'reservations';
+const APP_CURRENCY = 'EUR';
+
 const state = {
   reservations: [],
   dashboard: {},
@@ -5,11 +10,13 @@ const state = {
   editingId: null
 };
 
-const currency = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' });
+const currency = new Intl.NumberFormat(undefined, { style: 'currency', currency: APP_CURRENCY });
 const dateFormatter = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 const monthFormatter = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' });
+const statuses = new Set(['Pending', 'Confirmed', 'Paid', 'Cancelled']);
 
 const elements = {
+  setupNotice: document.querySelector('#setupNotice'),
   monthlyRevenue: document.querySelector('#monthlyRevenue'),
   occupancyRate: document.querySelector('#occupancyRate'),
   remainingToCollect: document.querySelector('#remainingToCollect'),
@@ -41,52 +48,141 @@ const fields = {
   notes: document.querySelector('#notes')
 };
 
+const isSupabaseConfigured = SUPABASE_URL.startsWith('https://') && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY';
+const supabaseClient = isSupabaseConfigured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
 function asDate(value) {
   return new Date(`${value}T00:00:00`);
 }
 
+function toNumber(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function calculateNightsBetween(checkIn, checkOut) {
+  if (!checkIn || !checkOut) return 0;
+  const nights = Math.round((asDate(checkOut) - asDate(checkIn)) / 86400000);
+  return nights > 0 ? nights : 0;
+}
+
 function calculateNights() {
-  if (!fields.check_in.value || !fields.check_out.value) {
-    fields.nights.value = '';
-    return;
-  }
-  const nights = Math.round((asDate(fields.check_out.value) - asDate(fields.check_in.value)) / 86400000);
-  fields.nights.value = nights > 0 ? nights : 0;
+  fields.nights.value = calculateNightsBetween(fields.check_in.value, fields.check_out.value) || '';
 }
 
 function calculateRemaining() {
-  const total = Number(fields.total_amount.value || 0);
-  const deposit = Number(fields.deposit_paid.value || 0);
+  const total = toNumber(fields.total_amount.value);
+  const deposit = toNumber(fields.deposit_paid.value);
   fields.remaining_amount.value = Math.max(0, total - deposit).toFixed(2);
 }
 
-function reservationPayload() {
+function normalizeReservation(record) {
+  const total = toNumber(record.total_amount);
+  const deposit = toNumber(record.deposit_paid);
+  const nights = record.nights ?? calculateNightsBetween(record.check_in, record.check_out);
   return {
-    guest_full_name: fields.guest_full_name.value,
-    guest_phone: fields.guest_phone.value,
-    guest_email: fields.guest_email.value,
-    adults: Number(fields.adults.value),
-    children: Number(fields.children.value),
-    check_in: fields.check_in.value,
-    check_out: fields.check_out.value,
-    total_amount: Number(fields.total_amount.value),
-    deposit_paid: Number(fields.deposit_paid.value),
-    status: fields.status.value,
-    notes: fields.notes.value
+    ...record,
+    adults: Number(record.adults || 1),
+    children: Number(record.children || 0),
+    nights,
+    total_amount: total,
+    deposit_paid: deposit,
+    remaining_amount: record.remaining_amount === null || record.remaining_amount === undefined ? Math.max(0, total - deposit) : toNumber(record.remaining_amount)
   };
 }
 
-async function api(path, options = {}) {
-  const response = await fetch(path, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options
-  });
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Request failed.' }));
-    throw new Error(error.message || 'Request failed.');
+function validateReservation(payload) {
+  const requiredFields = ['guest_full_name', 'guest_phone', 'guest_email', 'check_in', 'check_out'];
+  for (const field of requiredFields) {
+    if (!payload[field] || String(payload[field]).trim() === '') {
+      throw new Error(`${field.replaceAll('_', ' ')} is required.`);
+    }
   }
-  if (response.status === 204) return null;
-  return response.json();
+
+  if (calculateNightsBetween(payload.check_in, payload.check_out) < 1) {
+    throw new Error('Check-out date must be after check-in date.');
+  }
+
+  if (!statuses.has(payload.status || 'Pending')) {
+    throw new Error('Reservation status is invalid.');
+  }
+
+  if (toNumber(payload.adults) < 1) {
+    throw new Error('At least one adult is required.');
+  }
+
+  if (toNumber(payload.children) < 0 || toNumber(payload.total_amount) < 0 || toNumber(payload.deposit_paid) < 0) {
+    throw new Error('Guest counts and amounts cannot be negative.');
+  }
+}
+
+function reservationPayload() {
+  const total = toNumber(fields.total_amount.value);
+  const deposit = toNumber(fields.deposit_paid.value);
+  const payload = {
+    guest_full_name: fields.guest_full_name.value.trim(),
+    guest_phone: fields.guest_phone.value.trim(),
+    guest_email: fields.guest_email.value.trim(),
+    adults: Math.max(1, Math.trunc(toNumber(fields.adults.value) || 1)),
+    children: Math.max(0, Math.trunc(toNumber(fields.children.value))),
+    check_in: fields.check_in.value,
+    check_out: fields.check_out.value,
+    total_amount: total,
+    deposit_paid: deposit,
+    status: fields.status.value || 'Pending',
+    notes: fields.notes.value.trim() || null
+  };
+  validateReservation(payload);
+  return payload;
+}
+
+function buildDashboard(reservations) {
+  const today = new Date();
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+
+  const activeReservations = reservations.filter((reservation) => reservation.status !== 'Cancelled');
+  const monthlyRevenue = activeReservations.reduce((total, reservation) => {
+    const checkIn = asDate(reservation.check_in);
+    return checkIn.getFullYear() === today.getFullYear() && checkIn.getMonth() === today.getMonth()
+      ? total + reservation.total_amount
+      : total;
+  }, 0);
+
+  const remainingToCollect = activeReservations.reduce((total, reservation) => total + reservation.remaining_amount, 0);
+  const occupiedNightsThisMonth = activeReservations.reduce((total, reservation) => {
+    const start = asDate(reservation.check_in) > monthStart ? asDate(reservation.check_in) : monthStart;
+    const end = asDate(reservation.check_out) < monthEnd ? asDate(reservation.check_out) : monthEnd;
+    const nights = Math.max(0, Math.round((end - start) / 86400000));
+    return total + nights;
+  }, 0);
+
+  return {
+    monthly_revenue: monthlyRevenue,
+    remaining_to_collect: remainingToCollect,
+    occupancy_rate: Math.min(100, Math.round((occupiedNightsThisMonth / daysInMonth) * 100)),
+    upcoming: activeReservations
+      .filter((reservation) => asDate(reservation.check_in) >= new Date(today.getFullYear(), today.getMonth(), today.getDate()))
+      .sort((a, b) => asDate(a.check_in) - asDate(b.check_in))
+      .slice(0, 6)
+  };
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  }[character]));
+}
+
+function showEmptyState(message) {
+  const safeMessage = escapeHtml(message);
+  elements.reservationList.innerHTML = `<div class="empty-state">${safeMessage}</div>`;
+  elements.upcomingReservations.innerHTML = `<div class="empty-state">${safeMessage}</div>`;
 }
 
 function renderDashboard() {
@@ -106,15 +202,15 @@ function renderReservationCards(container, reservations, compact = false) {
     <article class="reservation-card">
       <header>
         <div>
-          <h3>${reservation.guest_full_name}</h3>
+          <h3>${escapeHtml(reservation.guest_full_name)}</h3>
           <div class="reservation-meta">
             <span>${dateFormatter.format(asDate(reservation.check_in))} → ${dateFormatter.format(asDate(reservation.check_out))}</span>
-            ${compact ? '' : `<span>${reservation.guest_phone} · ${reservation.guest_email}</span>`}
+            ${compact ? '' : `<span>${escapeHtml(reservation.guest_phone)} · ${escapeHtml(reservation.guest_email)}</span>`}
             <span>${reservation.adults} adult(s), ${reservation.children} child(ren) · ${reservation.nights} night(s)</span>
             <span>${currency.format(reservation.total_amount)} total · ${currency.format(reservation.remaining_amount)} remaining</span>
           </div>
         </div>
-        <span class="badge ${reservation.status}">${reservation.status}</span>
+        <span class="badge ${escapeHtml(reservation.status)}">${escapeHtml(reservation.status)}</span>
       </header>
       <div class="card-actions"><button type="button" data-edit-id="${reservation.id}">Edit</button></div>
     </article>
@@ -148,7 +244,7 @@ function renderCalendar() {
     return `
       <div class="day ${day.getMonth() === month ? '' : 'muted'}">
         <div class="day-number">${day.getDate()}</div>
-        ${bookings.slice(0, 2).map((booking) => `<span class="calendar-pill">${booking.guest_full_name}</span>`).join('')}
+        ${bookings.slice(0, 2).map((booking) => `<span class="calendar-pill">${escapeHtml(booking.guest_full_name)}</span>`).join('')}
       </div>
     `;
   });
@@ -189,12 +285,23 @@ function openReservation(reservation = null) {
 }
 
 async function loadData() {
-  const [reservations, dashboard] = await Promise.all([
-    api('/api/reservations'),
-    api('/api/reservations/dashboard')
-  ]);
-  state.reservations = reservations;
-  state.dashboard = dashboard;
+  if (!supabaseClient) {
+    elements.setupNotice.hidden = false;
+    showEmptyState('Connect Supabase to load reservations.');
+    renderCalendar();
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from(RESERVATIONS_TABLE)
+    .select('*')
+    .order('check_in', { ascending: true })
+    .order('id', { ascending: true });
+
+  if (error) throw new Error(error.message);
+
+  state.reservations = (data || []).map(normalizeReservation);
+  state.dashboard = buildDashboard(state.reservations);
   renderDashboard();
   renderReservations();
   renderCalendar();
@@ -205,11 +312,19 @@ async function saveReservation(event) {
   elements.formMessage.textContent = '';
   calculateNights();
   calculateRemaining();
+
+  if (!supabaseClient) {
+    elements.formMessage.textContent = 'Supabase is not configured yet.';
+    return;
+  }
+
   try {
     const payload = reservationPayload();
-    const path = state.editingId ? `/api/reservations/${state.editingId}` : '/api/reservations';
-    const method = state.editingId ? 'PUT' : 'POST';
-    await api(path, { method, body: JSON.stringify(payload) });
+    const query = state.editingId
+      ? supabaseClient.from(RESERVATIONS_TABLE).update(payload).eq('id', state.editingId)
+      : supabaseClient.from(RESERVATIONS_TABLE).insert(payload);
+    const { error } = await query;
+    if (error) throw new Error(error.message);
     elements.dialog.close();
     await loadData();
   } catch (error) {
@@ -219,7 +334,11 @@ async function saveReservation(event) {
 
 async function deleteReservation() {
   if (!state.editingId || !confirm('Delete this reservation?')) return;
-  await api(`/api/reservations/${state.editingId}`, { method: 'DELETE' });
+  const { error } = await supabaseClient.from(RESERVATIONS_TABLE).delete().eq('id', state.editingId);
+  if (error) {
+    elements.formMessage.textContent = error.message;
+    return;
+  }
   elements.dialog.close();
   await loadData();
 }
@@ -248,5 +367,5 @@ elements.deleteReservation.addEventListener('click', deleteReservation);
 [fields.total_amount, fields.deposit_paid].forEach((field) => field.addEventListener('input', calculateRemaining));
 
 loadData().catch((error) => {
-  elements.reservationList.innerHTML = `<div class="empty-state">${error.message}</div>`;
+  showEmptyState(error.message);
 });

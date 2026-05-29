@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
   <header class="hero">
@@ -35,6 +35,12 @@
   </header>
 
   <main class="app-shell">
+    <section id="setupNotice" class="panel setup-panel" hidden>
+      <p class="eyebrow">Setup required</p>
+      <h2>Connect Supabase</h2>
+      <p>Edit <code>app.js</code> and replace <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> with your free Supabase project values.</p>
+    </section>
+
     <section class="panel upcoming-panel">
       <div class="section-heading">
         <div>
@@ -107,6 +113,7 @@
     </form>
   </dialog>
 
-  <script src="/app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./app.js"></script>
 </body>
 </html>
