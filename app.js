@@ -1,4 +1,4 @@
-const SUPABASE_URL = 'https://kqkvfavasrvukagratcu.supabase.co/rest/v1/';
+const SUPABASE_URL = 'https://kqkvfavasrvukagratcu.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtxa3ZmYXZhc3J2dWthZ3JhdGN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwNzgxNTYsImV4cCI6MjA5NTY1NDE1Nn0.CHfG25-2_WX99qiYo8PLkoLWF-QXNXCS2zWMJV9S22w';
 const RESERVATIONS_TABLE = 'reservations';
 const APP_CURRENCY = 'EUR';
