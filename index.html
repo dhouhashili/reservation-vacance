@@ -24,12 +24,16 @@
         <strong id="monthlyRevenue">$0</strong>
       </article>
       <article class="metric-card">
-        <span>Occupancy rate</span>
-        <strong id="occupancyRate">0%</strong>
+        <span>Wassim concierge cost</span>
+        <strong id="wassimCost">$0</strong>
       </article>
       <article class="metric-card">
         <span>Remaining to collect</span>
         <strong id="remainingToCollect">$0</strong>
+      </article>
+      <article class="metric-card">
+        <span>Occupancy rate</span>
+        <strong id="occupancyRate">0%</strong>
       </article>
     </section>
   </header>
@@ -92,8 +96,8 @@
       <input type="hidden" id="reservationId">
       <div class="form-grid">
         <label>Full name<input id="guestFullName" required placeholder="Guest full name"></label>
-        <label>Phone<input id="guestPhone" required placeholder="+1 555 000 0000"></label>
-        <label>Email<input id="guestEmail" type="email" required placeholder="guest@example.com"></label>
+        <label>Phone <span class="optional-field">optional</span><input id="guestPhone" placeholder="+216 ..."></label>
+        <label>Email <span class="optional-field">optional</span><input id="guestEmail" type="email" placeholder="guest@example.com"></label>
         <label>Status<select id="status"><option>Pending</option><option>Confirmed</option><option>Paid</option><option>Cancelled</option></select></label>
         <label>Adults<input id="adults" type="number" min="1" value="2" required></label>
         <label>Children<input id="children" type="number" min="0" value="0" required></label>
@@ -103,6 +107,7 @@
         <label>Total amount<input id="totalAmount" type="number" min="0" step="0.01" value="0" required></label>
         <label>Deposit paid<input id="depositPaid" type="number" min="0" step="0.01" value="0" required></label>
         <label>Remaining amount<input id="remainingAmount" type="number" readonly></label>
+        <label>Wassim concierge cost<input id="wassimCostInput" type="number" min="0" step="0.01" value="0"></label>
       </div>
       <label class="full-width">Notes<textarea id="notes" rows="3" placeholder="Arrival details, requests, payment notes..."></textarea></label>
       <p id="formMessage" class="form-message" role="alert"></p>
