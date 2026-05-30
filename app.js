@@ -104,6 +104,16 @@ function normalizeReservation(record) {
   };
 }
 
+function reservationsForRange(checkIn, checkOut, ignoreId = null) {
+  const start = asDate(checkIn);
+  const end = asDate(checkOut);
+  return state.reservations.filter((reservation) => {
+    if (reservation.status === 'Cancelled') return false;
+    if (ignoreId && String(reservation.id) === String(ignoreId)) return false;
+    return start < asDate(reservation.check_out) && end > asDate(reservation.check_in);
+  });
+}
+
 function validateReservation(payload) {
   const requiredFields = ['guest_full_name', 'guest_phone', 'guest_email', 'check_in', 'check_out'];
   for (const field of requiredFields) {
@@ -126,6 +136,11 @@ function validateReservation(payload) {
 
   if (toNumber(payload.children) < 0 || toNumber(payload.total_amount) < 0 || toNumber(payload.deposit_paid) < 0) {
     throw new Error('Guest counts and amounts cannot be negative.');
+  }
+
+  const overlaps = reservationsForRange(payload.check_in, payload.check_out, state.editingId);
+  if (overlaps.length) {
+    throw new Error(`These dates are already booked by ${overlaps.map((item) => item.guest_full_name).join(', ')}.`);
   }
 }
 
@@ -231,6 +246,8 @@ function renderReservationCards(container, reservations, compact = false) {
 }
 
 function renderReservations() {
+  const listHeading = document.querySelector('.reservations-panel h2');
+  if (listHeading) listHeading.textContent = 'Reservations';
   renderReservationCards(elements.reservationList, state.reservations);
 }
 
@@ -274,7 +291,7 @@ function renderCalendar() {
     return `
       <button type="button" class="${classes}" data-date="${dayIso}" aria-label="${dayIso}">
         <div class="day-number">${day.getDate()}</div>
-        ${bookings.slice(0, 2).map((booking) => `<span class="calendar-pill">${escapeHtml(booking.guest_full_name)}</span>`).join('')}
+        ${bookings.slice(0, 3).map((booking) => `<span class="calendar-pill ${escapeHtml(booking.status)}" title="${escapeHtml(booking.guest_full_name)} · ${escapeHtml(booking.status)}">${escapeHtml(booking.guest_full_name)}</span>`).join('')}
       </button>
     `;
   });
@@ -332,6 +349,16 @@ function prepareReservationForSelectedDates(startIso, endIso = null) {
   const checkIn = toIsoDate(start < end ? start : end);
   const checkOutBase = start < end ? end : start;
   const checkOut = endIso ? toIsoDate(addDays(checkOutBase, 1)) : toIsoDate(checkOutBase);
+  const overlaps = reservationsForRange(checkIn, checkOut);
+
+  if (overlaps.length) {
+    state.selectionStart = null;
+    state.selectionEnd = null;
+    renderCalendar();
+    showReservationsForDate(overlaps[0].check_in, overlaps);
+    alert(`Impossible: ces dates sont déjà réservées par ${overlaps.map((item) => item.guest_full_name).join(', ')}.`);
+    return;
+  }
 
   state.selectionStart = null;
   state.selectionEnd = null;
