@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Adam's House Reservation Manager</title>
+  <title>Gestion des réservations - Maison de vacances</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -13,65 +13,93 @@
   <header class="hero">
     <nav class="topbar">
       <div>
-        <p class="eyebrow">Vacation rental control center</p>
-        <h1>Adam's House Reservation Manager</h1>
+        <p class="eyebrow">Tableau de bord de location saisonnière</p>
+        <h1>Gestion des réservations de la maison de vacances</h1>
       </div>
-      <button id="newReservationButton" class="primary-button">+ New</button>
+      <button id="newReservationButton" class="primary-button">+ Nouvelle réservation</button>
     </nav>
-    <section class="dashboard-grid" aria-label="Dashboard summary">
-      <article class="metric-card"><span>Monthly revenue</span><strong id="monthlyRevenue">0</strong></article>
-      <article class="metric-card"><span>Wassim concierge cost</span><strong id="wassimCost">0</strong></article>
-      <article class="metric-card"><span>Net profit</span><strong id="netProfit">0</strong></article>
-      <article class="metric-card"><span>Remaining to collect</span><strong id="remainingToCollect">0</strong></article>
-      <article class="metric-card"><span>Occupancy rate</span><strong id="occupancyRate">0%</strong></article>
-      <article class="metric-card"><span>Reservations</span><strong id="reservationCount">0</strong></article>
+    <section class="dashboard-grid" aria-label="Résumé du tableau de bord">
+      <article class="metric-card"><span>Chiffre d’affaires du mois</span><strong id="monthlyRevenue">0 TND</strong></article>
+      <article class="metric-card"><span>Coût concierge Wassim</span><strong id="wassimCost">0 TND</strong></article>
+      <article class="metric-card"><span>Bénéfice net</span><strong id="netProfit">0 TND</strong></article>
+      <article class="metric-card"><span>Reste à encaisser</span><strong id="remainingToCollect">0 TND</strong></article>
+      <article class="metric-card"><span>Taux d’occupation</span><strong id="occupancyRate">0%</strong></article>
+      <article class="metric-card"><span>Réservations</span><strong id="reservationCount">0</strong></article>
     </section>
   </header>
 
   <main class="app-shell">
     <section id="setupNotice" class="panel setup-panel" hidden>
-      <p class="eyebrow">Setup required</p>
-      <h2>Connect Supabase</h2>
-      <p>Edit <code>app.js</code> and replace <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> with your free Supabase project values.</p>
+      <p class="eyebrow">Configuration requise</p>
+      <h2>Connecter Supabase</h2>
+      <p>Modifiez <code>app.js</code> et remplacez <code>SUPABASE_URL</code> et <code>SUPABASE_ANON_KEY</code> par les valeurs de votre projet Supabase gratuit.</p>
     </section>
 
-    <section class="panel upcoming-panel"><div class="section-heading"><div><p class="eyebrow">Next arrivals</p><h2>Upcoming reservations</h2></div></div><div id="upcomingReservations" class="stacked-list"></div></section>
+    <section class="panel upcoming-panel">
+      <div class="section-heading">
+        <div><p class="eyebrow">Prochaines arrivées</p><h2>Réservations à venir</h2></div>
+      </div>
+      <div id="upcomingReservations" class="stacked-list"></div>
+    </section>
 
     <section class="panel calendar-panel">
-      <div class="section-heading"><div><p class="eyebrow">Calendar</p><h2 id="calendarTitle">Reservations</h2></div><div class="calendar-controls"><button id="previousMonth" class="ghost-button" aria-label="Previous month">‹</button><button id="nextMonth" class="ghost-button" aria-label="Next month">›</button></div></div>
-      <div class="calendar-weekdays"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
+      <div class="section-heading">
+        <div><p class="eyebrow">Calendrier</p><h2 id="calendarTitle">Réservations</h2></div>
+        <div class="calendar-controls">
+          <button id="previousMonth" class="ghost-button" aria-label="Mois précédent">‹</button>
+          <button id="nextMonth" class="ghost-button" aria-label="Mois suivant">›</button>
+        </div>
+      </div>
+      <div class="status-legend" aria-label="Légende des statuts">
+        <span><i class="legend-dot status-Pending"></i>En attente</span>
+        <span><i class="legend-dot status-Confirmed"></i>Confirmée</span>
+        <span><i class="legend-dot status-Paid"></i>Payée</span>
+        <span><i class="legend-dot status-Arrived"></i>Arrivée</span>
+        <span><i class="legend-dot status-Departed"></i>Départ effectué</span>
+        <span><i class="legend-dot status-Cancelled"></i>Annulée</span>
+      </div>
+      <div class="calendar-weekdays"><span>Lun</span><span>Mar</span><span>Mer</span><span>Jeu</span><span>Ven</span><span>Sam</span><span>Dim</span></div>
       <div id="calendar" class="calendar"></div>
     </section>
 
-    <section class="panel reservations-panel"><div class="section-heading"><div><p class="eyebrow">All stays</p><h2>Reservations</h2></div></div><div id="reservationList" class="reservation-list"></div></section>
+    <section class="panel reservations-panel">
+      <div class="section-heading">
+        <div><p class="eyebrow">Tous les séjours</p><h2>Réservations</h2></div>
+      </div>
+      <div id="reservationList" class="reservation-list"></div>
+    </section>
   </main>
 
   <dialog id="reservationDialog" class="reservation-dialog">
     <form id="reservationForm" method="dialog">
-      <div class="dialog-header"><div><p class="eyebrow">Booking details</p><h2 id="dialogTitle">Add reservation</h2></div><button type="button" id="closeDialog" class="icon-button" aria-label="Close">×</button></div>
+      <div class="dialog-header">
+        <div><p class="eyebrow">Détails de la réservation</p><h2 id="dialogTitle">Ajouter une réservation</h2></div>
+        <button type="button" id="closeDialog" class="icon-button" aria-label="Fermer">×</button>
+      </div>
       <input type="hidden" id="reservationId">
       <div class="form-grid">
-        <label>Full name<input id="guestFullName" required placeholder="Guest full name"></label>
-        <label>Phone <span class="optional-field">optional</span><input id="guestPhone" placeholder="+216 ..."></label>
-        <label>Email <span class="optional-field">optional</span><input id="guestEmail" type="email" placeholder="guest@example.com"></label>
-        <label>WhatsApp <span class="optional-field">optional</span><input id="whatsappNumber" placeholder="+216 ..."></label>
-        <label>Arrival time <span class="optional-field">optional</span><input id="arrivalTime" type="time"></label>
-        <label>GPS / pickup location <span class="optional-field">optional</span><input id="gpsLocation" placeholder="Maps link or GPS coordinates"></label>
-        <label>Source<select id="bookingSource"><option>TunRooms</option><option>Kabilys</option><option>Vivlio</option><option>Instagram</option></select></label>
-        <label>Status<select id="status"><option>Pending</option><option>Confirmed</option><option>Paid</option><option>Arrived</option><option>Departed</option><option>Cancelled</option></select></label>
-        <label>Adults<input id="adults" type="number" min="1" value="2" required></label>
-        <label>Children<input id="children" type="number" min="0" value="0" required></label>
-        <label>Check-in<input id="checkIn" type="date" required></label>
-        <label>Check-out<input id="checkOut" type="date" required></label>
-        <label>Nights<input id="nights" type="number" readonly></label>
-        <label>Total amount<input id="totalAmount" type="number" min="0" step="0.01" value="0" required></label>
-        <label>Deposit paid<input id="depositPaid" type="number" min="0" step="0.01" value="0" required></label>
-        <label>Remaining amount<input id="remainingAmount" type="number" readonly></label>
-        <label>Wassim concierge cost<input id="wassimCostInput" type="number" min="0" step="0.01" value="0"></label>
+        <label>Nom complet<input id="guestFullName" required placeholder="Nom complet du locataire"></label>
+        <label>Téléphone <span class="optional-field">facultatif</span><input id="guestPhone" placeholder="+216 ..."></label>
+        <label>Email <span class="optional-field">facultatif</span><input id="guestEmail" type="email" placeholder="locataire@example.com"></label>
+        <label>WhatsApp <span class="optional-field">facultatif</span><input id="whatsappNumber" placeholder="+216 ..."></label>
+        <label>Heure d’arrivée <span class="optional-field">facultatif</span><input id="arrivalTime" type="time"></label>
+        <label>GPS / lieu de rendez-vous <span class="optional-field">facultatif</span><input id="gpsLocation" placeholder="Lien Maps ou coordonnées GPS"></label>
+        <label>Source de réservation<select id="bookingSource"><option>TunRooms</option><option>Kabilys</option><option>Vivlio</option><option>Instagram</option><option>Direct</option><option>WhatsApp</option></select></label>
+        <label>Statut<select id="status"><option value="Pending">En attente</option><option value="Confirmed">Confirmée</option><option value="Paid">Payée</option><option value="Arrived">Arrivée</option><option value="Departed">Départ effectué</option><option value="Cancelled">Annulée</option></select></label>
+        <label>Adultes<input id="adults" type="number" min="1" value="2" required></label>
+        <label>Enfants<input id="children" type="number" min="0" value="0" required></label>
+        <label>Arrivée<input id="checkIn" type="date" required></label>
+        <label>Départ<input id="checkOut" type="date" required></label>
+        <label>Nuits<input id="nights" type="number" readonly></label>
+        <label>Total (TND)<input id="totalAmount" type="number" min="0" step="0.01" value="0" required></label>
+        <label>Avance payée (TND)<input id="depositPaid" type="number" min="0" step="0.01" value="0" required></label>
+        <label>Reste à payer (TND)<input id="remainingAmount" type="number" readonly></label>
+        <label>Coût concierge Wassim (TND)<input id="wassimCostInput" type="number" min="0" step="0.01" value="0"></label>
+        <label>Bénéfice net (TND)<input id="netProfitInput" type="number" readonly></label>
       </div>
-      <label class="full-width">Notes<textarea id="notes" rows="3" placeholder="Arrival details, requests, payment notes..."></textarea></label>
+      <label class="full-width">Notes<textarea id="notes" rows="3" placeholder="Détails d’arrivée, demandes, paiement, ménage..."></textarea></label>
       <p id="formMessage" class="form-message" role="alert"></p>
-      <div class="dialog-actions"><button type="button" id="deleteReservation" class="danger-button">Delete</button><button type="submit" class="primary-button">Save reservation</button></div>
+      <div class="dialog-actions"><button type="button" id="deleteReservation" class="danger-button">Supprimer</button><button type="submit" class="primary-button">Enregistrer</button></div>
     </form>
   </dialog>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
