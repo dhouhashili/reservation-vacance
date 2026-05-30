@@ -19,26 +19,12 @@
       <button id="newReservationButton" class="primary-button">+ New</button>
     </nav>
     <section class="dashboard-grid" aria-label="Dashboard summary">
-      <article class="metric-card">
-        <span>Monthly revenue</span>
-        <strong id="monthlyRevenue">$0</strong>
-      </article>
-      <article class="metric-card">
-        <span>Wassim concierge cost</span>
-        <strong id="wassimCost">$0</strong>
-      </article>
-      <article class="metric-card">
-        <span>Net profit</span>
-        <strong id="netProfit">$0</strong>
-      </article>
-      <article class="metric-card">
-        <span>Remaining to collect</span>
-        <strong id="remainingToCollect">$0</strong>
-      </article>
-      <article class="metric-card">
-        <span>Occupancy rate</span>
-        <strong id="occupancyRate">0%</strong>
-      </article>
+      <article class="metric-card"><span>Monthly revenue</span><strong id="monthlyRevenue">0</strong></article>
+      <article class="metric-card"><span>Wassim concierge cost</span><strong id="wassimCost">0</strong></article>
+      <article class="metric-card"><span>Net profit</span><strong id="netProfit">0</strong></article>
+      <article class="metric-card"><span>Remaining to collect</span><strong id="remainingToCollect">0</strong></article>
+      <article class="metric-card"><span>Occupancy rate</span><strong id="occupancyRate">0%</strong></article>
+      <article class="metric-card"><span>Reservations</span><strong id="reservationCount">0</strong></article>
     </section>
   </header>
 
@@ -49,54 +35,20 @@
       <p>Edit <code>app.js</code> and replace <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> with your free Supabase project values.</p>
     </section>
 
-    <section class="panel upcoming-panel">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Next arrivals</p>
-          <h2>Upcoming reservations</h2>
-        </div>
-      </div>
-      <div id="upcomingReservations" class="stacked-list"></div>
-    </section>
+    <section class="panel upcoming-panel"><div class="section-heading"><div><p class="eyebrow">Next arrivals</p><h2>Upcoming reservations</h2></div></div><div id="upcomingReservations" class="stacked-list"></div></section>
 
     <section class="panel calendar-panel">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Calendar</p>
-          <h2 id="calendarTitle">Reservations</h2>
-        </div>
-        <div class="calendar-controls">
-          <button id="previousMonth" class="ghost-button" aria-label="Previous month">‹</button>
-          <button id="nextMonth" class="ghost-button" aria-label="Next month">›</button>
-        </div>
-      </div>
-      <div class="calendar-weekdays">
-        <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
-      </div>
+      <div class="section-heading"><div><p class="eyebrow">Calendar</p><h2 id="calendarTitle">Reservations</h2></div><div class="calendar-controls"><button id="previousMonth" class="ghost-button" aria-label="Previous month">‹</button><button id="nextMonth" class="ghost-button" aria-label="Next month">›</button></div></div>
+      <div class="calendar-weekdays"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
       <div id="calendar" class="calendar"></div>
     </section>
 
-    <section class="panel reservations-panel">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">All stays</p>
-          <h2>Reservations</h2>
-        </div>
-      </div>
-      <div id="reservationList" class="reservation-list"></div>
-    </section>
+    <section class="panel reservations-panel"><div class="section-heading"><div><p class="eyebrow">All stays</p><h2>Reservations</h2></div></div><div id="reservationList" class="reservation-list"></div></section>
   </main>
 
   <dialog id="reservationDialog" class="reservation-dialog">
     <form id="reservationForm" method="dialog">
-      <div class="dialog-header">
-        <div>
-          <p class="eyebrow">Booking details</p>
-          <h2 id="dialogTitle">Add reservation</h2>
-        </div>
-        <button type="button" id="closeDialog" class="icon-button" aria-label="Close">×</button>
-      </div>
-
+      <div class="dialog-header"><div><p class="eyebrow">Booking details</p><h2 id="dialogTitle">Add reservation</h2></div><button type="button" id="closeDialog" class="icon-button" aria-label="Close">×</button></div>
       <input type="hidden" id="reservationId">
       <div class="form-grid">
         <label>Full name<input id="guestFullName" required placeholder="Guest full name"></label>
@@ -105,7 +57,8 @@
         <label>WhatsApp <span class="optional-field">optional</span><input id="whatsappNumber" placeholder="+216 ..."></label>
         <label>Arrival time <span class="optional-field">optional</span><input id="arrivalTime" type="time"></label>
         <label>GPS / pickup location <span class="optional-field">optional</span><input id="gpsLocation" placeholder="Maps link or GPS coordinates"></label>
-        <label>Status<select id="status"><option>Pending</option><option>Confirmed</option><option>Paid</option><option>Cancelled</option></select></label>
+        <label>Source<select id="bookingSource"><option>TunRooms</option><option>Kabilys</option><option>Vivlio</option></select></label>
+        <label>Status<select id="status"><option>Pending</option><option>Confirmed</option><option>Paid</option><option>Arrived</option><option>Departed</option><option>Cancelled</option></select></label>
         <label>Adults<input id="adults" type="number" min="1" value="2" required></label>
         <label>Children<input id="children" type="number" min="0" value="0" required></label>
         <label>Check-in<input id="checkIn" type="date" required></label>
@@ -118,13 +71,9 @@
       </div>
       <label class="full-width">Notes<textarea id="notes" rows="3" placeholder="Arrival details, requests, payment notes..."></textarea></label>
       <p id="formMessage" class="form-message" role="alert"></p>
-      <div class="dialog-actions">
-        <button type="button" id="deleteReservation" class="danger-button">Delete</button>
-        <button type="submit" class="primary-button">Save reservation</button>
-      </div>
+      <div class="dialog-actions"><button type="button" id="deleteReservation" class="danger-button">Delete</button><button type="submit" class="primary-button">Save reservation</button></div>
     </form>
   </dialog>
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./app.js"></script>
 </body>
