@@ -7,7 +7,9 @@ const state = {
   reservations: [],
   dashboard: {},
   calendarDate: new Date(),
-  editingId: null
+  editingId: null,
+  selectionStart: null,
+  selectionEnd: null
 };
 
 const currency = new Intl.NumberFormat(undefined, { style: 'currency', currency: APP_CURRENCY });
@@ -58,6 +60,17 @@ function asDate(value) {
 function toNumber(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function toIsoDate(date) {
+  const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  return localDate.toISOString().slice(0, 10);
+}
+
+function addDays(date, days) {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
 }
 
 function calculateNightsBetween(checkIn, checkOut) {
@@ -229,6 +242,15 @@ function reservationsForDay(day) {
   });
 }
 
+function isDateInSelection(day) {
+  if (!state.selectionStart) return false;
+  const dayIso = toIsoDate(day);
+  if (!state.selectionEnd) return dayIso === state.selectionStart;
+  const start = state.selectionStart < state.selectionEnd ? state.selectionStart : state.selectionEnd;
+  const end = state.selectionStart < state.selectionEnd ? state.selectionEnd : state.selectionStart;
+  return dayIso >= start && dayIso <= end;
+}
+
 function renderCalendar() {
   const year = state.calendarDate.getFullYear();
   const month = state.calendarDate.getMonth();
@@ -240,12 +262,20 @@ function renderCalendar() {
   const days = Array.from({ length: 42 }, (_, index) => {
     const day = new Date(start);
     day.setDate(start.getDate() + index);
+    const dayIso = toIsoDate(day);
     const bookings = reservationsForDay(day);
+    const classes = [
+      'day',
+      day.getMonth() === month ? '' : 'muted',
+      bookings.length ? 'booked' : '',
+      isDateInSelection(day) ? 'selected' : ''
+    ].filter(Boolean).join(' ');
+
     return `
-      <div class="day ${day.getMonth() === month ? '' : 'muted'}">
+      <button type="button" class="${classes}" data-date="${dayIso}" aria-label="${dayIso}">
         <div class="day-number">${day.getDate()}</div>
         ${bookings.slice(0, 2).map((booking) => `<span class="calendar-pill">${escapeHtml(booking.guest_full_name)}</span>`).join('')}
-      </div>
+      </button>
     `;
   });
   elements.calendar.innerHTML = days.join('');
@@ -268,7 +298,7 @@ function resetForm() {
   calculateRemaining();
 }
 
-function openReservation(reservation = null) {
+function openReservation(reservation = null, dates = null) {
   resetForm();
   if (reservation) {
     state.editingId = reservation.id;
@@ -278,10 +308,68 @@ function openReservation(reservation = null) {
     }
     elements.dialogTitle.textContent = 'Edit reservation';
     elements.deleteReservation.hidden = false;
+  } else if (dates) {
+    fields.check_in.value = dates.checkIn;
+    fields.check_out.value = dates.checkOut;
+    elements.dialogTitle.textContent = 'Add reservation for selected dates';
   }
   calculateNights();
   calculateRemaining();
   elements.dialog.showModal();
+}
+
+function showReservationsForDate(dateIso, bookings) {
+  renderReservationCards(elements.reservationList, bookings);
+  const formattedDate = dateFormatter.format(asDate(dateIso));
+  const listHeading = document.querySelector('.reservations-panel h2');
+  if (listHeading) listHeading.textContent = `Reservations on ${formattedDate}`;
+  elements.reservationList.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function prepareReservationForSelectedDates(startIso, endIso = null) {
+  const start = asDate(startIso);
+  const end = endIso ? asDate(endIso) : addDays(start, 1);
+  const checkIn = toIsoDate(start < end ? start : end);
+  const checkOutBase = start < end ? end : start;
+  const checkOut = endIso ? toIsoDate(addDays(checkOutBase, 1)) : toIsoDate(checkOutBase);
+
+  state.selectionStart = null;
+  state.selectionEnd = null;
+  renderCalendar();
+  openReservation(null, { checkIn, checkOut });
+}
+
+function handleCalendarClick(event) {
+  const dayButton = event.target.closest('.day[data-date]');
+  if (!dayButton) return;
+
+  const dateIso = dayButton.dataset.date;
+  const selectedDate = asDate(dateIso);
+  const bookings = reservationsForDay(selectedDate);
+
+  if (bookings.length) {
+    state.selectionStart = null;
+    state.selectionEnd = null;
+    renderCalendar();
+    showReservationsForDate(dateIso, bookings);
+    return;
+  }
+
+  if (!state.selectionStart) {
+    state.selectionStart = dateIso;
+    state.selectionEnd = null;
+    renderCalendar();
+    return;
+  }
+
+  if (state.selectionStart === dateIso) {
+    prepareReservationForSelectedDates(dateIso);
+    return;
+  }
+
+  state.selectionEnd = dateIso;
+  renderCalendar();
+  prepareReservationForSelectedDates(state.selectionStart, state.selectionEnd);
 }
 
 async function loadData() {
@@ -347,12 +435,17 @@ document.querySelector('#newReservationButton').addEventListener('click', () => 
 document.querySelector('#closeDialog').addEventListener('click', () => elements.dialog.close());
 document.querySelector('#previousMonth').addEventListener('click', () => {
   state.calendarDate.setMonth(state.calendarDate.getMonth() - 1);
+  state.selectionStart = null;
+  state.selectionEnd = null;
   renderCalendar();
 });
 document.querySelector('#nextMonth').addEventListener('click', () => {
   state.calendarDate.setMonth(state.calendarDate.getMonth() + 1);
+  state.selectionStart = null;
+  state.selectionEnd = null;
   renderCalendar();
 });
+elements.calendar.addEventListener('click', handleCalendarClick);
 elements.form.addEventListener('submit', saveReservation);
 elements.deleteReservation.addEventListener('click', deleteReservation);
 [elements.reservationList, elements.upcomingReservations].forEach((container) => {
